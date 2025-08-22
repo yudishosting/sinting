@@ -12,14 +12,13 @@ let pairingCode = null;
 let connectionStatus = 'disconnected';
 let isWaitingForPairing = false;
 
-// Simpan state otentikasi di memori (untuk Vercel, perlu disimpan di environment atau database)
-let authState = { state: { creds: {}, keys: {} }, saveCreds: () => {} };
+// Gunakan path sementara untuk auth di Vercel
+const authDir = process.env.AUTH_DIR || '/tmp/auth_info';
 
 async function connectToWhatsApp() {
+    console.log('Memulai koneksi ke WhatsApp...');
     try {
-        const { state, saveCreds } = await useMultiFileAuthState(process.env.AUTH_DIR || 'auth_info');
-        authState = { state, saveCreds };
-
+        const { state, saveCreds } = await useMultiFileAuthState(authDir);
         const { version } = await fetchLatestBaileysVersion();
 
         sock = makeWASocket({
@@ -39,28 +38,31 @@ async function connectToWhatsApp() {
         if (!sock.authState.creds.registered) {
             isWaitingForPairing = true;
             connectionStatus = 'waiting_phone';
-            console.log('🚀 Bot siap! Buka / untuk melakukan pairing');
+            console.log('Bot siap untuk pairing. Buka / untuk memasukkan nomor.');
         }
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect } = update;
+            console.log('Update koneksi:', { connection, lastDisconnect });
             if (connection === 'close') {
                 const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
                 if (shouldReconnect) {
                     console.log('Koneksi terputus, mencoba reconnect...');
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Tunggu sebelum reconnect
                     connectToWhatsApp();
                 } else {
-                    console.error('Logged out. Jalankan ulang untuk mendapatkan pairing code baru.');
+                    console.error('Logged out. Harap jalankan ulang untuk pairing baru.');
                 }
             } else if (connection === 'open') {
-                console.log('✅ Terhubung ke WhatsApp!');
+                console.log('Terhubung ke WhatsApp!');
                 connectionStatus = 'connected';
                 isWaitingForPairing = false;
                 pairingCode = null;
             }
         });
     } catch (error) {
-        console.error('Error connecting to WhatsApp:', error);
+        console.error('Error saat koneksi ke WhatsApp:', error);
+        connectionStatus = 'disconnected';
     }
 }
 
@@ -73,7 +75,7 @@ async function processProfilePictureRectangle(media) {
             preview: await resized.normalize().getBufferAsync(Jimp.MIME_JPEG),
         };
     } catch (error) {
-        console.error('Error saat memproses gambar:', error);
+        console.error('Error memproses gambar:', error);
         throw new Error('Gagal memproses gambar.');
     }
 }
@@ -86,6 +88,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/status', (req, res) => {
+    console.log('Status diminta:', { connected: sock && sock.user ? true : false, status: connectionStatus });
     res.json({ 
         connected: sock && sock.user ? true : false,
         status: connectionStatus,
@@ -109,7 +112,7 @@ app.post('/request-pairing', express.json(), async (req, res) => {
         const code = await sock.requestPairingCode(phoneNumber);
         pairingCode = code;
         connectionStatus = 'waiting_scan';
-        console.log(`📱 Pairing code generated for ${phoneNumber}: ${code}`);
+        console.log(`Pairing code generated for ${phoneNumber}: ${code}`);
         res.json({ success: true, pairingCode: code });
     } catch (err) {
         console.error('Error generating pairing code:', err);
@@ -119,7 +122,7 @@ app.post('/request-pairing', express.json(), async (req, res) => {
 
 app.post('/upload', upload.single('image'), async (req, res) => {
     if (!sock || !sock.user) {
-        return res.json({ success: false, message: 'WhatsApp belum terhubung. Cek terminal untuk pairing code.' });
+        return res.json({ success: false, message: 'WhatsApp belum terhubung. Cek log untuk pairing code.' });
     }
 
     const fileBuffer = req.file?.buffer;
@@ -148,7 +151,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
 
 app.post('/setpppanjang', upload.single('image'), async (req, res) => {
     if (!sock || !sock.user) {
-        return res.json({ success: false, message: 'WhatsApp belum terhubung. Cek terminal untuk pairing code.' });
+        return res.json({ success: false, message: 'WhatsApp belum terhubung. Cek log untuk pairing code.' });
     }
 
     const fileBuffer = req.file?.buffer;
@@ -177,7 +180,7 @@ app.post('/setpppanjang', upload.single('image'), async (req, res) => {
         
         res.json({ success: true, message: 'Sukses mengatur foto profil persegi panjang!' });
     } catch (error) {
-        console.error('Error saat mengupdate profile picture:', error);
+        console.error('Error mengupdate profile picture:', error);
         res.json({ success: false, message: 'Gagal mengupdate foto profil persegi panjang: ' + error.message });
     }
 });
@@ -185,4 +188,4 @@ app.post('/setpppanjang', upload.single('image'), async (req, res) => {
 // Mulai koneksi saat server dimulai
 connectToWhatsApp();
 
-module.exports = app; // Ekspor app untuk Vercel
+module.exports = app;
