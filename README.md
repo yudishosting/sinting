@@ -31,10 +31,10 @@ A modern web application to set your WhatsApp profile picture in **original rect
 ### Local Setup
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/whatsapp-profile-setter.git
+git clone https://github.com/yourusername/setpp.git
 
 # Navigate to project directory
-cd whatsapp-profile-setter
+cd setpp
 
 # Install dependencies
 npm install
