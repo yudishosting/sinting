@@ -3,57 +3,65 @@ const P = require('pino');
 const Jimp = require('jimp');
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage() }); // Use memory storage for Vercel
+const upload = multer({ storage: multer.memoryStorage() });
 let sock = null;
 
 let pairingCode = null;
 let connectionStatus = 'disconnected';
 let isWaitingForPairing = false;
 
+// Simpan state otentikasi di memori (untuk Vercel, perlu disimpan di environment atau database)
+let authState = { state: { creds: {}, keys: {} }, saveCreds: () => {} };
+
 async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
-    const { version } = await fetchLatestBaileysVersion();
+    try {
+        const { state, saveCreds } = await useMultiFileAuthState(process.env.AUTH_DIR || 'auth_info');
+        authState = { state, saveCreds };
 
-    sock = makeWASocket({
-        logger: P({ level: 'silent' }),
-        auth: state,
-        browser: ['Ubuntu', 'Chrome', '20.0.04'],
-        version,
-        syncFullHistory: true,
-        generateHighQualityLinkPreview: true,
-        getMessage: async (key) => {
-            return { conversation: '' };
-        }
-    });
+        const { version } = await fetchLatestBaileysVersion();
 
-    sock.ev.on('creds.update', saveCreds);
-
-    if (!sock.authState.creds.registered) {
-        isWaitingForPairing = true;
-        connectionStatus = 'waiting_phone';
-        console.log('🚀 Bot siap! Buka http://localhost:3001 untuk melakukan pairing');
-    }
-
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) {
-                console.log('Koneksi terputus, mencoba reconnect...');
-                connectToWhatsApp();
-            } else {
-                console.error('Logged out. Jalankan ulang untuk mendapatkan pairing code baru.');
+        sock = makeWASocket({
+            logger: P({ level: 'silent' }),
+            auth: state,
+            browser: ['Ubuntu', 'Chrome', '20.0.04'],
+            version,
+            syncFullHistory: true,
+            generateHighQualityLinkPreview: true,
+            getMessage: async (key) => {
+                return { conversation: '' };
             }
-        } else if (connection === 'open') {
-            console.log('✅ Terhubung ke WhatsApp!');
-            connectionStatus = 'connected';
-            isWaitingForPairing = false;
-            pairingCode = null;
+        });
+
+        sock.ev.on('creds.update', saveCreds);
+
+        if (!sock.authState.creds.registered) {
+            isWaitingForPairing = true;
+            connectionStatus = 'waiting_phone';
+            console.log('🚀 Bot siap! Buka / untuk melakukan pairing');
         }
-    });
+
+        sock.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect } = update;
+            if (connection === 'close') {
+                const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+                if (shouldReconnect) {
+                    console.log('Koneksi terputus, mencoba reconnect...');
+                    connectToWhatsApp();
+                } else {
+                    console.error('Logged out. Jalankan ulang untuk mendapatkan pairing code baru.');
+                }
+            } else if (connection === 'open') {
+                console.log('✅ Terhubung ke WhatsApp!');
+                connectionStatus = 'connected';
+                isWaitingForPairing = false;
+                pairingCode = null;
+            }
+        });
+    } catch (error) {
+        console.error('Error connecting to WhatsApp:', error);
+    }
 }
 
 async function processProfilePictureRectangle(media) {
@@ -74,7 +82,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(__dirname + '/public/index.html');
 });
 
 app.get('/status', (req, res) => {
@@ -174,15 +182,7 @@ app.post('/setpppanjang', upload.single('image'), async (req, res) => {
     }
 });
 
-const port = process.env.PORT || 3001;
-app.listen(port, () => {
-    console.log(`🚀 Server berjalan di http://localhost:${port}`);
-    console.log('📱 Buka browser dan akses alamat tersebut untuk melakukan pairing');
-    connectToWhatsApp();
-}).on('error', (err) => {
-    console.error('Express Error:', err);
-    if (err.code === 'EADDRINUSE') {
-        console.error(`Port ${port} sudah digunakan. Coba port lain atau hentikan proses di port ${port}.`);
-        process.exit(1);
-    }
-});
+// Mulai koneksi saat server dimulai
+connectToWhatsApp();
+
+module.exports = app; // Ekspor app untuk Vercel
