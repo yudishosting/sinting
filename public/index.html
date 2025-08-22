@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Profile Picture Setter</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 WhatsApp Profile Setter</h1>
+            <p>Atur foto profil WhatsApp dengan mudah</p>
+            <div id="connectionStatus" class="status-indicator status-disconnected">
+                🔴 Tidak Terhubung
+            </div>
+        </div>
+
+        <!-- Pairing Section -->
+        <div id="pairingSection" class="pairing-section" style="display: none;">
+            <div class="pairing-card">
+                <h3>🔗 Hubungkan WhatsApp</h3>
+                <p>Masukkan nomor WhatsApp Anda untuk mendapatkan pairing code</p>
+                
+                <div class="phone-input-wrapper">
+                    <input type="text" id="phoneInput" placeholder="6281234567890" class="phone-input">
+                    <button onclick="requestPairingCode()" class="pairing-btn" id="pairingBtn">
+                        Dapatkan Kode Pairing
+                    </button>
+                </div>
+                
+                <div id="pairingCodeDisplay" class="pairing-code-display" style="display: none;">
+                    <h4>🎁 Pairing Code Anda:</h4>
+                    <div class="pairing-code" id="pairingCodeValue" onclick="copyPairingCode()"></div>
+                    <p class="pairing-instruction">
+                        1. Buka WhatsApp di HP Anda<br>
+                        2. Pilih <strong>Tautan Perangkat</strong><br>
+                        3. Masukkan kode di atas<br>
+                        <small>(Klik kode untuk menyalin)</small>
+                    </p>
+                </div>
+                
+                <div id="pairingMessage"></div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <div class="info-box">
+                <h4>🚀 Fitur Baru: Foto Profil Persegi Panjang!</h4>
+                <p>Sekarang Anda bisa mengatur foto profil WhatsApp yang tetap berbentuk persegi panjang (tidak dipotong jadi kotak). Pilih gambar dan klik tombol yang sesuai.</p>
+            </div>
+
+            <!-- Upload Foto Profil Biasa (Kotak) -->
+            <div class="upload-section">
+                <h3>🟦 Foto Profil Kotak (Normal)</h3>
+                <div class="file-input-wrapper">
+                    <input type="file" id="squareImage" class="file-input" accept="image/*">
+                    <label for="squareImage" class="file-input-button">
+                        📁 Pilih Gambar (akan dipotong jadi kotak)
+                    </label>
+                </div>
+                <button onclick="uploadSquare()" class="upload-btn" id="squareBtn">
+                    🟦 Set Foto Profil Kotak
+                </button>
+                <div id="squarePreview" class="preview"></div>
+                <div id="squareMessage"></div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Upload Foto Profil Persegi Panjang -->
+            <div class="upload-section">
+                <h3>🟩 Foto Profil Persegi Panjang (Baru!)</h3>
+                <div class="file-input-wrapper">
+                    <input type="file" id="rectangleImage" class="file-input" accept="image/*">
+                    <label for="rectangleImage" class="file-input-button">
+                        📁 Pilih Gambar (tetap bentuk asli)
+                    </label>
+                </div>
+                <button onclick="uploadRectangle()" class="upload-btn" id="rectangleBtn">
+                    🟩 Set Foto Profil Persegi Panjang
+                </button>
+                <div id="rectanglePreview" class="preview"></div>
+                <div id="rectangleMessage"></div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Sedang memproses...</p>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="particleCanvas"></canvas>
+
+    <script src="/script.js"></script>
+</body>
+</html>

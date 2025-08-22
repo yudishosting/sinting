@@ -67,7 +67,8 @@
     "server.js",
     "package.json",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "public/"
   ],
   "directories": {
     "uploads": "./uploads/",
