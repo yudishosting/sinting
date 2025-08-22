@@ -13,6 +13,6 @@
     }
   ],
   "env": {
-    "AUTH_DIR": "auth_info"
+    "AUTH_DIR": "/tmp/auth_info"
   }
 }
